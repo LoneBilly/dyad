@@ -3,6 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { PlusCircle } from "lucide-react";
 import { useAtom, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { IpcClient } from "@/ipc/ipc_client";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -20,17 +21,37 @@ export function AppList({ show }: { show?: boolean }) {
   const setSelectedChatId = useSetAtom(selectedChatIdAtom);
   const { apps, loading, error } = useLoadApps();
 
+
   if (!show) {
     return null;
   }
 
-  const handleAppClick = (id: number) => {
+  const handleAppClick = async (id: number) => {
+    // Mettre à jour l'application sélectionnée
     setSelectedAppId(id);
-    setSelectedChatId(null);
-    navigate({
-      to: "/",
-      search: { appId: id },
-    });
+    
+    // Récupérer la liste des chats triés par date (du plus récent au plus ancien)
+    const chats = await IpcClient.getInstance().getChats(id);
+    const mostRecentChat = chats[0]; // Le premier élément est le plus récent
+    
+    // Si un chat existe, on le sélectionne, sinon on crée un nouveau chat
+    if (mostRecentChat) {
+      setSelectedChatId(mostRecentChat.id);
+      navigate({
+        to: "/chat",
+        search: { id: mostRecentChat.id },
+        replace: true,
+      });
+    } else {
+      // Créer un nouveau chat s'il n'y en a pas
+      const newChatId = await IpcClient.getInstance().createChat(id);
+      setSelectedChatId(newChatId);
+      navigate({
+        to: "/chat",
+        search: { id: newChatId },
+        replace: true,
+      });
+    }
   };
 
   const handleNewApp = () => {

@@ -17,20 +17,25 @@ import {
   Paperclip,
   ChartColumnIncreasing,
   SendHorizontalIcon,
+  Mic,
+  MicOff,
 } from "lucide-react";
-import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useChat } from "ai/react";
+import React, { FC, useState, useEffect, useRef, useCallback, JSX } from "react";
+import type { Message as AIMessage } from "ai";
 
 import { useSettings } from "@/hooks/useSettings";
 import { IpcClient } from "@/ipc/ipc_client";
-import {
+import { 
   chatInputValueAtom,
   chatMessagesAtom,
-  selectedChatIdAtom,
+  selectedChatIdAtom
 } from "@/atoms/chatAtoms";
 import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
+import { PromoMessage } from "./PromoMessage";
 import { Button } from "@/components/ui/button";
 import { useProposal } from "@/hooks/useProposal";
 import {
@@ -67,19 +72,50 @@ import { useCheckProblems } from "@/hooks/useCheckProblems";
 
 const showTokenBarAtom = atom(false);
 
-export function ChatInput({ chatId }: { chatId?: number }) {
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: any) => void;
+  onerror: (event: any) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
+
+interface ChatInputProps {
+  chatId?: number;
+  onSend?: () => void;
+  streamCount?: number;
+}
+
+export function ChatInput({ chatId, onSend, streamCount = 0 }: ChatInputProps) {
   const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(false);
+  const [speechRecognitionError, setSpeechRecognitionError] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { settings } = useSettings();
+  const { userBudget } = useUserBudgetInfo();
+  const [messages, setMessages] = useAtom(chatMessagesAtom);
   const appId = useAtomValue(selectedAppIdAtom);
+  const selectedChatId = useAtomValue(selectedChatIdAtom);
   const { refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
   const [showError, setShowError] = useState(true);
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const [isRejecting, setIsRejecting] = useState(false); // State for rejecting
-  const [, setMessages] = useAtom<Message[]>(chatMessagesAtom);
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
   const [showTokenBar, setShowTokenBar] = useAtom(showTokenBarAtom);
   const [selectedComponent, setSelectedComponent] = useAtom(
@@ -109,6 +145,139 @@ export function ChatInput({ chatId }: { chatId?: number }) {
     refreshProposal,
   } = useProposal(chatId);
   const { proposal, messageId } = proposalResult ?? {};
+
+  // Initialisation de la reconnaissance vocale
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setIsSpeechRecognitionSupported(true);
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'fr-FR';
+
+      recognitionRef.current.onresult = (event) => {
+        // Récupérer uniquement le dernier résultat intermédiaire
+        const lastResult = event.results[event.results.length - 1];
+        const transcript = lastResult[0].transcript;
+        
+        // Si c'est un résultat final, ajouter un espace à la fin
+        if (lastResult.isFinal) {
+          setInputValue(prev => prev ? `${prev} ${transcript} ` : `${transcript} `);
+        } else {
+          // Pour les résultats intermédiaires, on remplace le texte existant
+          // en gardant uniquement les résultats finaux précédents
+          const finalTranscript = Array.from(event.results)
+            .filter(result => result.isFinal)
+            .map(result => result[0].transcript)
+            .join(' ');
+            
+          setInputValue(finalTranscript ? `${finalTranscript} ${transcript}` : transcript);
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Erreur de reconnaissance vocale:', event.error);
+        let errorMessage = 'Erreur de reconnaissance vocale';
+        
+        switch(event.error) {
+          case 'not-allowed':
+            errorMessage = 'Microphone non autorisé. Veuillez vérifier les permissions de votre navigateur.';
+            break;
+          case 'network':
+            errorMessage = 'Erreur réseau. Vérifiez votre connexion Internet.';
+            break;
+          case 'audio-capture':
+            errorMessage = 'Impossible de capturer l\'audio. Vérifiez votre microphone.';
+            break;
+          case 'language-not-supported':
+            errorMessage = 'Langue non supportée';
+            break;
+          default:
+            errorMessage = `Erreur: ${event.error}`;
+        }
+        
+        setSpeechRecognitionError(errorMessage);
+        setIsListening(false);
+        
+        // Effacer le message d'erreur après 5 secondes
+        setTimeout(() => {
+          setSpeechRecognitionError(null);
+        }, 5000);
+      };
+
+      recognitionRef.current.onend = () => {
+        if (isListening) {
+          recognitionRef.current?.start();
+        }
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [isListening, setInputValue]);
+
+  const toggleSpeechRecognition = async () => {
+    if (!isSpeechRecognitionSupported) {
+      setSpeechRecognitionError('La reconnaissance vocale n\'est pas supportée par votre navigateur');
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      setSpeechRecognitionError(null);
+    } else {
+      try {
+        // Vérifier si on a déjà la permission
+        const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        
+        // Si la permission est refusée, on ne peut pas continuer
+        if (permission.state === 'denied') {
+          setSpeechRecognitionError('Accès au microphone refusé. Veuillez autoriser l\'accès dans les paramètres de votre navigateur.');
+          return;
+        }
+        
+        // Si la permission n'est pas accordée, on la demande
+        if (permission.state !== 'granted') {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // Arrêter le flux immédiatement après avoir obtenu la permission
+          stream.getTracks().forEach(track => track.stop());
+        }
+        
+        setSpeechRecognitionError(null);
+        if (recognitionRef.current) {
+          // Réinitialiser les résultats précédents
+          // Utilisation de l'événement 'start' au lieu de 'onstart'
+          recognitionRef.current.addEventListener('start', (event: Event) => {
+            console.log('Reconnaissance vocale démarrée');
+          });
+          
+          recognitionRef.current.start();
+          setIsListening(true);
+        }
+      } catch (error) {
+        console.error('Erreur d\'accès au microphone:', error);
+        if (error instanceof DOMException) {
+          if (error.name === 'NotAllowedError') {
+            setSpeechRecognitionError('Accès au microphone refusé. Veuillez autoriser l\'accès au microphone.');
+          } else if (error.name === 'NotFoundError') {
+            setSpeechRecognitionError('Aucun microphone détecté. Veuillez brancher un microphone.');
+          } else {
+            setSpeechRecognitionError(`Erreur d'accès au microphone: ${error.message}`);
+          }
+        } else {
+          setSpeechRecognitionError('Impossible d\'accéder au microphone');
+        }
+        setIsListening(false);
+      }
+    }
+  };
 
   const adjustHeight = () => {
     const textarea = textareaRef.current;
@@ -145,6 +314,10 @@ export function ChatInput({ chatId }: { chatId?: number }) {
     }
   };
 
+  const scrollToBottom = () => {
+    // This is a no-op here since we're handling scrolling in the parent
+  };
+
   const handleSubmit = async () => {
     if (
       (!inputValue.trim() && attachments.length === 0) ||
@@ -159,6 +332,11 @@ export function ChatInput({ chatId }: { chatId?: number }) {
     setSelectedComponent(null);
 
     // Send message with attachments and clear them after sending
+    if (onSend) {
+      onSend();
+    } else {
+      scrollToBottom();
+    }
     await streamMessage({
       prompt: currentInput,
       chatId,
@@ -248,25 +426,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
   }
 
   return (
-    <>
-      {error && showError && (
-        <ChatErrorBox
-          onDismiss={dismissError}
-          error={error}
-          isDyadProEnabled={settings.enableDyadPro ?? false}
-        />
-      )}
-      {/* Display loading or error state for proposal */}
-      {isProposalLoading && (
-        <div className="p-4 text-sm text-muted-foreground">
-          Loading proposal...
-        </div>
-      )}
-      {proposalError && (
-        <div className="p-4 text-sm text-red-600">
-          Error loading proposal: {proposalError}
-        </div>
-      )}
+    <div className="flex flex-col">
       <div className="p-4" data-testid="chat-input-container">
         <div
           className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${
@@ -308,7 +468,14 @@ export function ChatInput({ chatId }: { chatId?: number }) {
           {/* Use the DragDropOverlay component */}
           <DragDropOverlay isDraggingOver={isDraggingOver} />
 
-          <div className="flex items-start space-x-2 ">
+          <div className="flex items-start space-x-2 relative">
+            {speechRecognitionError && (
+              <div className="absolute -top-8 left-0 right-0 text-center">
+                <div className="inline-block bg-red-100 border border-red-400 text-red-700 px-4 py-1 rounded text-sm">
+                  {speechRecognitionError}
+                </div>
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               value={inputValue}
@@ -320,24 +487,40 @@ export function ChatInput({ chatId }: { chatId?: number }) {
               style={{ resize: "none" }}
             />
 
-            {isStreaming ? (
-              <button
-                onClick={handleCancel}
-                className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg"
-                title="Cancel generation"
-              >
-                <StopCircleIcon size={20} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={!inputValue.trim() && attachments.length === 0}
-                className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg disabled:opacity-50"
-                title="Send message"
-              >
-                <SendHorizontalIcon size={20} />
-              </button>
-            )}
+            <div className="flex items-center">
+              {isSpeechRecognitionSupported && (
+                <button
+                  type="button"
+                  onClick={toggleSpeechRecognition}
+                  className={`px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-${isListening ? 'red-500' : '--sidebar-accent-fg'} rounded-lg`}
+                  title={isListening ? 'Arrêter la dictée' : 'Démarrer la dictée'}
+                >
+                  {isListening ? (
+                    <MicOff size={20} className="animate-pulse" />
+                  ) : (
+                    <Mic size={20} />
+                  )}
+                </button>
+              )}
+              {isStreaming ? (
+                <button
+                  onClick={handleCancel}
+                  className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg"
+                  title="Cancel generation"
+                >
+                  <StopCircleIcon size={20} />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={!inputValue.trim() && attachments.length === 0}
+                  className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg disabled:opacity-50"
+                  title="Send message"
+                >
+                  <SendHorizontalIcon size={20} />
+                </button>
+              )}
+            </div>
           </div>
           <div className="pl-2 pr-1 flex items-center justify-between pb-2">
             <div className="flex items-center">
@@ -392,19 +575,17 @@ export function ChatInput({ chatId }: { chatId?: number }) {
           {showTokenBar && <TokenBar chatId={chatId} />}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-function SuggestionButton({
-  children,
-  onClick,
-  tooltipText,
-}: {
+interface SuggestionButtonProps {
   onClick: () => void;
   children: React.ReactNode;
   tooltipText: string;
-}) {
+}
+
+function SuggestionButton({ children, onClick, tooltipText }: SuggestionButtonProps): JSX.Element {
   const { isStreaming } = useStreamChat();
   return (
     <TooltipProvider>
@@ -741,6 +922,8 @@ function ChatInputActions({
           </div>
         </div>
       </div>
+      
+
 
       <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
         {isDetailsVisible && (

@@ -21,10 +21,10 @@ export interface MessageConfig {
 }
 
 // Generic Message component
-export function Message({ spans }: MessageConfig) {
+export function Message({ spans, className = '' }: MessageConfig & { className?: string }) {
   return (
-    <div className="max-w-3xl mx-auto mt-4 py-2 px-1 border border-blue-500 rounded-lg bg-blue-50 text-center">
-      <p className="text-sm text-blue-700">
+    <div className={`max-w-3xl mx-auto text-center ${className}`}>
+      <p className="text-sm text-foreground dark:text-white">
         {spans.map((span, index) => {
           if (span.type === "text") {
             return <span key={index}>{span.content}</span>;
@@ -213,10 +213,16 @@ const ALL_MESSAGES = [
 ];
 
 // Main PromoMessage component using the modular system
-export function PromoMessage({ seed }: { seed: number }) {
+export function PromoMessage({ 
+  seed, 
+  className = '' 
+}: { 
+  seed: number;
+  className?: string;
+}) {
   const hashedSeed = hashNumber(seed);
   const randomMessage = ALL_MESSAGES[hashedSeed % ALL_MESSAGES.length];
-  return <Message {...randomMessage} />;
+  return <Message {...randomMessage} className={className} />;
 }
 
 /**

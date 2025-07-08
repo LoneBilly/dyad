@@ -1,5 +1,6 @@
-import { StrictMode, useEffect } from "react";
+import { StrictMode, useEffect, Suspense } from "react";
 import { createRoot } from "react-dom/client";
+import "./i18n";
 import { router } from "./router";
 import { RouterProvider } from "@tanstack/react-router";
 import { PostHogProvider } from "posthog-js/react";
@@ -114,10 +115,12 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <PostHogProvider client={posthogClient}>
-        <App />
-      </PostHogProvider>
-    </QueryClientProvider>
+    <Suspense fallback="Loading...">
+      <QueryClientProvider client={queryClient}>
+        <PostHogProvider client={posthogClient}>
+          <App />
+        </PostHogProvider>
+      </QueryClientProvider>
+    </Suspense>
   </StrictMode>,
 );

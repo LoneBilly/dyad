@@ -126,44 +126,53 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-xs">
-                    Version {versions.length - index}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium text-xs">
+                      Version {versions.length - index}
+                    </span>
+                    {version.stable && (
+                      <span className="text-yellow-500" title="Version stable">
+                        ⭐
+                      </span>
+                    )}
+                  </div>
                   <span className="text-xs opacity-90">
                     {formatDistanceToNow(new Date(version.timestamp * 1000), {
                       addSuffix: true,
                     })}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  {version.message && (
-                    <p className="mt-1 text-sm">
-                      {version.message.startsWith(
-                        "Reverted all changes back to version ",
-                      )
-                        ? version.message.replace(
-                            /Reverted all changes back to version ([a-f0-9]+)/,
-                            (_, hash) => {
-                              const targetIndex = versions.findIndex(
-                                (v) => v.oid === hash,
-                              );
-                              return targetIndex !== -1
-                                ? `Reverted all changes back to version ${
-                                    versions.length - targetIndex
-                                  }`
-                                : version.message;
-                            },
-                          )
-                        : version.message}
-                    </p>
-                  )}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    {version.message && (
+                      <p className="mt-1 text-sm">
+                        {version.message.startsWith(
+                          "Reverted all changes back to version ",
+                        )
+                          ? version.message.replace(
+                              /Reverted all changes back to version ([a-f0-9]+)/,
+                              (_, hash) => {
+                                const targetIndex = versions.findIndex(
+                                  (v) => v.oid === hash,
+                                );
+                                return targetIndex !== -1
+                                  ? `Reverted all changes back to version ${
+                                      versions.length - targetIndex
+                                    }`
+                                  : version.message;
+                              },
+                            )
+                          : version.message}
+                      </p>
+                    )}
+                  </div>
 
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();
-                          setSelectedVersionId(null);
+                          setSelectedVersionId(version.oid);
                           await revertVersion({
                             versionId: version.oid,
                           });
@@ -171,9 +180,10 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                           onClose();
                         }}
                         className={cn(
-                          "invisible mt-1 flex items-center gap-1 px-2 py-0.5 text-sm font-medium bg-(--primary) text-(--primary-foreground) hover:bg-background-lightest rounded-md transition-colors",
-                          selectedVersionId === version.oid && "visible",
+                          "mt-1 flex items-center gap-1 px-2 py-0.5 text-sm font-medium bg-(--primary) text-(--primary-foreground) hover:bg-background-lightest rounded-md transition-colors",
+                          isCheckingOutVersion && "opacity-50 cursor-not-allowed"
                         )}
+                        disabled={isCheckingOutVersion}
                         aria-label="Restore to this version"
                       >
                         <RotateCcw size={12} />

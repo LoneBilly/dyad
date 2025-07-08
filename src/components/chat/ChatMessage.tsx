@@ -30,39 +30,43 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
           !message.content &&
           isStreaming &&
           isLastMessage ? (
-            <div className="flex h-6 items-center space-x-2 p-2">
-              <motion.div
-                className="h-3 w-3 rounded-full bg-(--primary) dark:bg-blue-500"
-                animate={{ y: [0, -12, 0] }}
+            <div className="flex items-center space-x-2 p-1 text-gray-400 dark:text-gray-500 text-xs italic">
+              <span>Generating</span>
+              <motion.span
+                className="inline-block"
+                animate={{ opacity: [0.4, 1, 0.4] }}
                 transition={{
                   repeat: Number.POSITIVE_INFINITY,
-                  duration: 0.4,
-                  ease: "easeOut",
-                  repeatDelay: 1.2,
+                  duration: 1.5,
+                  ease: "easeInOut",
                 }}
-              />
-              <motion.div
-                className="h-3 w-3 rounded-full bg-(--primary) dark:bg-blue-500"
-                animate={{ y: [0, -12, 0] }}
+              >
+                .
+              </motion.span>
+              <motion.span
+                className="inline-block"
+                animate={{ opacity: [0.4, 1, 0.4] }}
                 transition={{
                   repeat: Number.POSITIVE_INFINITY,
-                  duration: 0.4,
-                  ease: "easeOut",
-                  delay: 0.4,
-                  repeatDelay: 1.2,
+                  duration: 1.5,
+                  ease: "easeInOut",
+                  delay: 0.3,
                 }}
-              />
-              <motion.div
-                className="h-3 w-3 rounded-full bg-(--primary) dark:bg-blue-500"
-                animate={{ y: [0, -12, 0] }}
+              >
+                .
+              </motion.span>
+              <motion.span
+                className="inline-block"
+                animate={{ opacity: [0.4, 1, 0.4] }}
                 transition={{
                   repeat: Number.POSITIVE_INFINITY,
-                  duration: 0.4,
-                  ease: "easeOut",
-                  delay: 0.8,
-                  repeatDelay: 1.2,
+                  duration: 1.5,
+                  ease: "easeInOut",
+                  delay: 0.6,
                 }}
-              />
+              >
+                .
+              </motion.span>
             </div>
           ) : (
             <div
@@ -73,10 +77,8 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                 <>
                   <DyadMarkdownParser content={message.content} />
                   {isLastMessage && isStreaming && (
-                    <div className="mt-4 ml-4 relative w-5 h-5 animate-spin">
-                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-(--primary) dark:bg-blue-500 rounded-full"></div>
-                      <div className="absolute bottom-0 left-0 w-2 h-2 bg-(--primary) dark:bg-blue-500 rounded-full opacity-80"></div>
-                      <div className="absolute bottom-0 right-0 w-2 h-2 bg-(--primary) dark:bg-blue-500 rounded-full opacity-60"></div>
+                    <div className="mt-1 ml-2 text-xs text-gray-400 dark:text-gray-500 italic">
+                      Generating...
                     </div>
                   )}
                 </>

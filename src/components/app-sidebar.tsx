@@ -4,6 +4,7 @@ import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { useEffect, useState, useRef } from "react";
 import { useAtom } from "jotai";
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
 import {
   Sidebar,
@@ -20,6 +21,7 @@ import {
 import { ChatList } from "./ChatList";
 import { AppList } from "./AppList";
 import { HelpDialog } from "./HelpDialog"; // Import the new dialog
+import { cn } from "@/lib/utils";
 
 // Menu items.
 const items = [
@@ -58,8 +60,23 @@ export function AppSidebar() {
   const expandedByHover = useRef(false);
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false); // State for dialog
   const [isDropdownOpen] = useAtom(dropdownOpenAtom);
+  const [forceShowChat, setForceShowChat] = useState(false);
+  const [selectedAppId] = useAtom(selectedAppIdAtom);
+  
+  const routerState = useRouterState();
+  const currentPath = routerState.location.pathname;
+  const isAppRoute = currentPath === "/" || currentPath.startsWith("/app-details");
+  const isChatRoute = currentPath === "/chat";
+
+  // Forcer l'affichage de la liste des chats quand on est sur la route /chat
+  useEffect(() => {
+    setForceShowChat(isChatRoute);
+  }, [isChatRoute]);
 
   useEffect(() => {
+    // Ne pas fermer la sidebar si on est en train de forcer l'affichage des chats
+    if (forceShowChat) return;
+    
     if (
       (hoverState === "start-hover:app" || hoverState === "start-hover:chat") &&
       state === "collapsed"
@@ -77,16 +94,19 @@ export function AppSidebar() {
       expandedByHover.current = false;
       setHoverState("no-hover");
     }
-  }, [hoverState, toggleSidebar, state, setHoverState, isDropdownOpen]);
+  }, [hoverState, toggleSidebar, state, setHoverState, isDropdownOpen, forceShowChat]);
 
-  const routerState = useRouterState();
-  const isAppRoute =
-    routerState.location.pathname === "/" ||
-    routerState.location.pathname.startsWith("/app-details");
-  const isChatRoute = routerState.location.pathname === "/chat";
+  // Réinitialiser forceShowChat si on n'est plus sur la route de chat
+  useEffect(() => {
+    if (!isChatRoute) {
+      setForceShowChat(false);
+    }
+  }, [isChatRoute]);
 
   let selectedItem: string | null = null;
-  if (hoverState === "start-hover:app") {
+  if (forceShowChat) {
+    selectedItem = "Chat";
+  } else if (hoverState === "start-hover:app") {
     selectedItem = "Apps";
   } else if (hoverState === "start-hover:chat") {
     selectedItem = "Chat";
@@ -101,6 +121,7 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="icon"
+      className="overflow-hidden"
       onMouseLeave={() => {
         if (!isDropdownOpen) {
           setHoverState("clear-hover");
@@ -110,7 +131,7 @@ export function AppSidebar() {
       <SidebarContent className="overflow-hidden">
         <div className="flex mt-8">
           {/* Left Column: Menu items */}
-          <div className="">
+          <div className="flex-shrink-0">
             <SidebarTrigger
               onMouseEnter={() => {
                 setHoverState("clear-hover");
@@ -119,7 +140,12 @@ export function AppSidebar() {
             <AppIcons onHoverChange={setHoverState} />
           </div>
           {/* Right Column: Chat List Section */}
-          <div className="w-[240px]">
+          <div 
+            className={cn(
+              "w-[240px] transition-all duration-200 ease-in-out overflow-hidden",
+              state === "collapsed" && "w-0 opacity-0"
+            )}
+          >
             <AppList show={selectedItem === "Apps"} />
             <ChatList show={selectedItem === "Chat"} />
           </div>

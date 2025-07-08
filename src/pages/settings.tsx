@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { ProviderSettingsGrid } from "@/components/ProviderSettings";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -20,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { AutoFixProblemsSwitch } from "@/components/AutoFixProblemsSwitch";
 
 export default function SettingsPage() {
+  const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -54,11 +56,11 @@ export default function SettingsPage() {
           className="flex items-center gap-2 mb-4 bg-(--background-lightest) py-5"
         >
           <ArrowLeft className="h-4 w-4" />
-          Go Back
+          {t('go_back', 'Go Back')}
         </Button>
         <div className="flex justify-between mb-4">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Settings
+            {t('settings')}
           </h1>
 
           {/* App Version Section */}
@@ -73,13 +75,38 @@ export default function SettingsPage() {
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              General Settings
+              {t('general_settings', 'General Settings')}
             </h2>
 
             <div className="space-y-4 mb-4">
               <div className="flex items-center gap-4">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Theme
+                  {t('language')}
+                </label>
+
+                <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex">
+                  {(['en', 'fr'] as const).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => i18n.changeLanguage(lang)}
+                      className={`
+                        px-4 py-1.5 text-sm font-medium rounded-md
+                        transition-all duration-200
+                        ${
+                          i18n.language === lang
+                            ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        }
+                      `}
+                    >
+                      {t(lang === 'en' ? 'english' : 'french')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {t('theme')}
                 </label>
 
                 <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex">
@@ -107,14 +134,14 @@ export default function SettingsPage() {
             <div className="space-y-1">
               <AutoApproveSwitch showToast={false} />
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                This will automatically approve code changes and run them.
+                {t('auto_approve_description', 'This will automatically approve code changes and run them.')}
               </div>
             </div>
 
             <div className="space-y-1 mt-4">
               <AutoFixProblemsSwitch />
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                This will automatically fix TypeScript errors.
+                {t('auto_fix_description', 'This will automatically fix TypeScript errors.')}
               </div>
             </div>
 
@@ -163,12 +190,12 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Telemetry
+                {t('telemetry')}
               </h2>
               <div className="space-y-2">
                 <TelemetrySwitch />
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  This records anonymous usage data to improve the product.
+                  {t('telemetry_description', 'This records anonymous usage data to improve the product.')}
                 </div>
               </div>
 
@@ -184,7 +211,7 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Integrations
+              {t('integrations')}
             </h2>
             <div className="space-y-4">
               <GitHubIntegration />
@@ -195,7 +222,7 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Experiments
+              {t('experiments')}
             </h2>
             <div className="space-y-4">
               {/* Enable File Editing Experiment */}
@@ -229,18 +256,17 @@ export default function SettingsPage() {
           {/* Danger Zone */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800">
             <h2 className="text-lg font-medium text-red-600 dark:text-red-400 mb-4">
-              Danger Zone
+              {t('danger_zone')}
             </h2>
 
             <div className="space-y-4">
               <div className="flex items-start justify-between flex-col sm:flex-row sm:items-center gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                    Reset Everything
+                    {t('reset_everything')}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    This will delete all your apps, chats, and settings. This
-                    action cannot be undone.
+                    {t('reset_description', 'This will delete all your apps, chats, and settings. This action cannot be undone.')}
                   </p>
                 </div>
                 <button
@@ -248,7 +274,7 @@ export default function SettingsPage() {
                   disabled={isResetting}
                   className="rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isResetting ? "Resetting..." : "Reset Everything"}
+                  {isResetting ? t('resetting', 'Resetting...') : t('reset_everything', 'Reset Everything')}
                 </button>
               </div>
             </div>

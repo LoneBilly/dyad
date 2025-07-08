@@ -108,6 +108,20 @@ export function ChatList({ show }: { show?: boolean }) {
     }
   };
 
+  if (!selectedAppId) {
+    return (
+      <SidebarGroup className="overflow-y-auto h-[calc(100vh-112px)]">
+        <SidebarGroupLabel>Recent Chats</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <div className="flex flex-col items-center justify-center h-full p-4">
+            <div className="text-gray-500 text-lg font-medium text-center">
+              Veuillez sélectionner un projet pour accéder aux chats.
+            </div>
+          </div>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
   return (
     <SidebarGroup className="overflow-y-auto h-[calc(100vh-112px)]">
       <SidebarGroupLabel>Recent Chats</SidebarGroupLabel>
