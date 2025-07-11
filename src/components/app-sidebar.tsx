@@ -4,6 +4,7 @@ import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { useEffect, useState, useRef } from "react";
 import { useAtom } from "jotai";
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
+import { selectedAppIdAtom } from "@/atoms/appAtoms"; // Import pour vérifier l'application sélectionnée
 
 import {
   Sidebar,
@@ -163,6 +164,7 @@ function AppIcons({
 }) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
+  const [selectedAppId] = useAtom(selectedAppIdAtom); // État de l'application sélectionnée
 
   return (
     // When collapsed: only show the main menu
@@ -187,6 +189,10 @@ function AppIcons({
                     to={item.to}
                     className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
                       isActive ? "bg-sidebar-accent" : ""
+                    } ${
+                      item.title === "Chat" && selectedAppId === null
+                        ? "opacity-50"
+                        : ""
                     }`}
                     onMouseEnter={() => {
                       if (item.title === "Apps") {
