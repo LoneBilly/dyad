@@ -154,13 +154,26 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Heart
-                      size={16}
-                      className={cn(
-                        "text-gray-500",
-                        version.liked && "fill-red-500 text-red-500",
-                      )}
-                    />
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (appId) {
+                          await IpcClient.getInstance().toggleLikeVersion(
+                            appId,
+                            version.oid,
+                          );
+                          await refreshVersions();
+                        }
+                      }}
+                    >
+                      <Heart
+                        size={16}
+                        className={cn(
+                          "text-gray-500",
+                          version.liked && "fill-red-500 text-red-500",
+                        )}
+                      />
+                    </button>
                     <span className="font-medium text-xs">
                       Version {versions.length - index}
                     </span>

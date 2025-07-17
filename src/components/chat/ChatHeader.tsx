@@ -171,7 +171,9 @@ export function ChatHeader({
                   appId,
                   branchInfo.oid,
                 );
-                await refetchBranchInfo();
+                setTimeout(() => {
+                  refetchBranchInfo();
+                }, 100);
               }
             }}
             variant="ghost"
