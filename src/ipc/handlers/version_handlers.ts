@@ -1,5 +1,5 @@
 import { db } from "../../db";
-import { apps, messages } from "../../db/schema";
+import { apps, messages, versions } from "../../db/schema";
 import { desc, eq, and, gt } from "drizzle-orm";
 import type { Version, BranchResult } from "../ipc_types";
 import fs from "node:fs";
@@ -40,12 +40,42 @@ export function registerVersionHandlers() {
       depth: 10_000, // Limit to last 10_000 commits for performance
     });
 
-    return commits.map((commit: ReadCommitResult) => ({
-      oid: commit.oid,
-      message: commit.commit.message,
-      timestamp: commit.commit.author.timestamp,
-    })) satisfies Version[];
+    const oids = commits.map((commit) => commit.oid);
+    const likedVersions =
+      oids.length > 0
+        ? await db.query.versions.findMany({
+            where: (versions, { inArray }) => inArray(versions.oid, oids),
+          })
+        : [];
+
+    return commits.map((commit: ReadCommitResult) => {
+      const likedVersion = likedVersions.find((v) => v.oid === commit.oid);
+      return {
+        oid: commit.oid,
+        message: commit.commit.message,
+        timestamp: commit.commit.author.timestamp,
+        liked: likedVersion?.liked === 1,
+      };
+    }) satisfies Version[];
   });
+
+  handle(
+    "toggle-like-version",
+    async (_, { oid }: { oid: string }) => {
+      const existing = await db.query.versions.findFirst({
+        where: eq(versions.oid, oid),
+      });
+
+      if (existing) {
+        await db
+          .update(versions)
+          .set({ liked: existing.liked === 1 ? 0 : 1 })
+          .where(eq(versions.oid, oid));
+      } else {
+        await db.insert(versions).values({ oid, liked: 1 });
+      }
+    },
+  );
 
   handle(
     "get-current-branch",

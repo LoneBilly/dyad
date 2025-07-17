@@ -87,6 +87,7 @@ export interface Version {
   oid: string;
   message: string;
   timestamp: number;
+  liked: boolean;
 }
 
 export type BranchResult = { branch: string };

@@ -68,11 +68,23 @@ export function useVersions(appId: number | null) {
     },
   );
 
+  const toggleLikeMutation = useMutation<void, Error, { oid: string }>({
+    mutationFn: async ({ oid }: { oid: string }) => {
+      const ipcClient = IpcClient.getInstance();
+      await ipcClient.toggleLikeVersion({ oid });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["versions", appId] });
+    },
+    meta: { showErrorToast: true },
+  });
+
   return {
     versions: versions || [],
     loading,
     error,
     refreshVersions,
     revertVersion: revertVersionMutation.mutateAsync,
+    toggleLikeVersion: toggleLikeMutation.mutateAsync,
   };
 }

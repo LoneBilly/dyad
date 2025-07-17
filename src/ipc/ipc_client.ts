@@ -430,6 +430,10 @@ export class IpcClient {
     });
   }
 
+  public async toggleLikeVersion({ oid }: { oid: string }): Promise<void> {
+    await this.ipcRenderer.invoke("toggle-like-version", { oid });
+  }
+
   // Checkout a specific version without creating a revert commit
   public async checkoutVersion({
     appId,
