@@ -61,31 +61,6 @@ const posthogClient = posthog.init(
     autocapture: false,
     capture_exceptions: true,
     capture_pageview: false,
-    before_send: (event) => {
-      if (!isTelemetryOptedIn()) {
-        console.debug("Telemetry not opted in, skipping event");
-        return null;
-      }
-      const telemetryUserId = getTelemetryUserId();
-      if (telemetryUserId) {
-        posthogClient.identify(telemetryUserId);
-      }
-
-      if (event.event === "$exception") {
-        return event;
-      }
-      if (event?.properties?.["$ip"]) {
-        event.properties["$ip"] = null;
-      }
-
-      console.debug(
-        "Telemetry opted in - UUID:",
-        telemetryUserId,
-        "sending event",
-        event,
-      );
-      return event;
-    },
     persistence: "localStorage",
   },
 );
