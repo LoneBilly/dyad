@@ -4,6 +4,7 @@ import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { useEffect, useState, useRef } from "react";
 import { useAtom } from "jotai";
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
 import {
   Sidebar,
@@ -163,6 +164,8 @@ function AppIcons({
 }) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
+  const [selectedAppId] = useAtom(selectedAppIdAtom);
+  const isAppSelected = selectedAppId !== null;
 
   return (
     // When collapsed: only show the main menu
@@ -175,6 +178,25 @@ function AppIcons({
             const isActive =
               (item.to === "/" && pathname === "/") ||
               (item.to !== "/" && pathname.startsWith(item.to));
+            const isChat = item.title === "Chat";
+            const isDisabled = isChat && !isAppSelected;
+
+            const linkContent = (
+              <div className="flex flex-col items-center gap-1">
+                <item.icon
+                  className={`h-5 w-5 ${
+                    isDisabled ? "text-gray-400" : ""
+                  }`}
+                />
+                <span
+                  className={`text-xs ${
+                    isDisabled ? "text-gray-400" : ""
+                  }`}
+                >
+                  {item.title}
+                </span>
+              </div>
+            );
 
             return (
               <SidebarMenuItem key={item.title}>
@@ -183,26 +205,42 @@ function AppIcons({
                   size="sm"
                   className="font-medium w-14"
                 >
-                  <Link
-                    to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
-                      isActive ? "bg-sidebar-accent" : ""
-                    }`}
-                    onMouseEnter={() => {
-                      if (item.title === "Apps") {
-                        onHoverChange("start-hover:app");
-                      } else if (item.title === "Chat") {
-                        onHoverChange("start-hover:chat");
-                      } else if (item.title === "Settings") {
-                        onHoverChange("start-hover:settings");
-                      }
-                    }}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      <item.icon className="h-5 w-5" />
-                      <span className={"text-xs"}>{item.title}</span>
+                  {isDisabled ? (
+                    <div
+                      className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl cursor-not-allowed ${
+                        isActive ? "bg-sidebar-accent" : ""
+                      }`}
+                      onMouseEnter={() => {
+                        if (item.title === "Apps") {
+                          onHoverChange("start-hover:app");
+                        } else if (item.title === "Chat") {
+                          onHoverChange("start-hover:chat");
+                        } else if (item.title === "Settings") {
+                          onHoverChange("start-hover:settings");
+                        }
+                      }}
+                    >
+                      {linkContent}
                     </div>
-                  </Link>
+                  ) : (
+                    <Link
+                      to={item.to}
+                      className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
+                        isActive ? "bg-sidebar-accent" : ""
+                      }`}
+                      onMouseEnter={() => {
+                        if (item.title === "Apps") {
+                          onHoverChange("start-hover:app");
+                        } else if (item.title === "Chat") {
+                          onHoverChange("start-hover:chat");
+                        } else if (item.title === "Settings") {
+                          onHoverChange("start-hover:settings");
+                        }
+                      }}
+                    >
+                      {linkContent}
+                    </Link>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );
