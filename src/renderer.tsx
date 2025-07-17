@@ -71,7 +71,10 @@ const posthogClient = posthog.init(
         posthogClient.identify(telemetryUserId);
       }
 
-      if (event?.properties["$ip"]) {
+      if (event.event === "$exception") {
+        return event;
+      }
+      if (event?.properties?.["$ip"]) {
         event.properties["$ip"] = null;
       }
 
