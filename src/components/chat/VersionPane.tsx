@@ -220,8 +220,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                           onClose();
                         }}
                         className={cn(
-                          "invisible mt-1 flex items-center gap-1 px-2 py-0.5 text-sm font-medium bg-(--primary) text-(--primary-foreground) hover:bg-background-lightest rounded-md transition-colors",
-                          selectedVersionId === version.oid && "visible",
+                          "mt-1 flex items-center gap-1 px-2 py-0.5 text-sm font-medium bg-(--primary) text-(--primary-foreground) hover:bg-background-lightest rounded-md transition-colors",
                         )}
                         aria-label="Restore to this version"
                       >
