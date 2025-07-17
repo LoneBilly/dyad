@@ -1,5 +1,5 @@
 import { db } from "../../db";
-import { apps, messages } from "../../db/schema";
+import { apps, liked_versions, messages } from "../../db/schema";
 import { desc, eq, and, gt } from "drizzle-orm";
 import type { Version, BranchResult } from "../ipc_types";
 import fs from "node:fs";
@@ -40,10 +40,16 @@ export function registerVersionHandlers() {
       depth: 10_000, // Limit to last 10_000 commits for performance
     });
 
+    const likedOids = await db.query.liked_versions.findMany({
+      where: eq(liked_versions.appId, appId),
+    });
+    const likedOidSet = new Set(likedOids.map((v) => v.oid));
+
     return commits.map((commit: ReadCommitResult) => ({
       oid: commit.oid,
       message: commit.commit.message,
       timestamp: commit.commit.author.timestamp,
+      liked: likedOidSet.has(commit.oid),
     })) satisfies Version[];
   });
 
@@ -72,8 +78,26 @@ export function registerVersionHandlers() {
           fullname: false,
         });
 
+        if (!currentBranch) {
+          return {
+            branch: "<no-branch>",
+            oid: "",
+            liked: false,
+          };
+        }
+
+        const oid = await git.resolveRef({ fs, dir: appPath, ref: currentBranch });
+        const liked = await db.query.liked_versions.findFirst({
+          where: and(
+            eq(liked_versions.appId, appId),
+            eq(liked_versions.oid, oid),
+          ),
+        });
+
         return {
-          branch: currentBranch || "<no-branch>",
+          branch: currentBranch,
+          oid,
+          liked: !!liked,
         };
       } catch (error: any) {
         logger.error(`Error getting current branch for app ${appId}:`, error);
@@ -180,6 +204,26 @@ export function registerVersionHandlers() {
           ref: versionId,
         });
       });
+    },
+  );
+
+  handle(
+    "toggle-like-version",
+    async (
+      _,
+      { appId, oid }: { appId: number; oid: string },
+    ): Promise<void> => {
+      const existing = await db.query.liked_versions.findFirst({
+        where: and(eq(liked_versions.appId, appId), eq(liked_versions.oid, oid)),
+      });
+
+      if (existing) {
+        await db
+          .delete(liked_versions)
+          .where(eq(liked_versions.id, existing.id));
+      } else {
+        await db.insert(liked_versions).values({ appId, oid });
+      }
     },
   );
 }

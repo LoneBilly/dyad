@@ -2,7 +2,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom, selectedVersionIdAtom } from "@/atoms/appAtoms";
 import { useVersions } from "@/hooks/useVersions";
 import { formatDistanceToNow } from "date-fns";
-import { RotateCcw, X } from "lucide-react";
+import { RotateCcw, X, Heart } from "lucide-react";
 import type { Version } from "@/ipc/ipc_types";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
@@ -33,6 +33,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const wasVisibleRef = useRef(false);
   const [cachedVersions, setCachedVersions] = useState<Version[]>([]);
+  const [showLikedOnly, setShowLikedOnly] = useState(false);
 
   useEffect(() => {
     async function updatePaneState() {
@@ -89,19 +90,45 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
     }
   };
 
-  const versions = cachedVersions.length > 0 ? cachedVersions : liveVersions;
+  const versions = (cachedVersions.length > 0 ? cachedVersions : liveVersions)
+    .filter((v) => !showLikedOnly || v.liked);
 
   return (
     <div className="h-full border-t border-2 border-border w-full">
       <div className="p-2 border-b border-border flex items-center justify-between">
         <h2 className="text-base font-semibold pl-2">Version History</h2>
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-(--background-lightest) rounded-md  "
-          aria-label="Close version pane"
-        >
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowLikedOnly(!showLikedOnly)}
+                className={cn(
+                  "p-1 hover:bg-(--background-lightest) rounded-md",
+                  showLikedOnly && "bg-red-100 dark:bg-red-900",
+                )}
+                aria-label="Filter liked versions"
+              >
+                <Heart
+                  size={20}
+                  className={cn(
+                    "text-gray-500",
+                    showLikedOnly && "fill-red-500 text-red-500",
+                  )}
+                />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {showLikedOnly ? "Show all versions" : "Show liked versions only"}
+            </TooltipContent>
+          </Tooltip>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-(--background-lightest) rounded-md"
+            aria-label="Close version pane"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
       <div className="overflow-y-auto h-[calc(100%-60px)]">
         {versions.length === 0 ? (
@@ -126,9 +153,18 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-xs">
-                    Version {versions.length - index}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Heart
+                      size={16}
+                      className={cn(
+                        "text-gray-500",
+                        version.liked && "fill-red-500 text-red-500",
+                      )}
+                    />
+                    <span className="font-medium text-xs">
+                      Version {versions.length - index}
+                    </span>
+                  </div>
                   <span className="text-xs opacity-90">
                     {formatDistanceToNow(new Date(version.timestamp * 1000), {
                       addSuffix: true,

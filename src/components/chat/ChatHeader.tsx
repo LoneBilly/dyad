@@ -4,6 +4,7 @@ import {
   PlusCircle,
   GitBranch,
   Info,
+  Heart,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -80,23 +81,6 @@ export function ChatHeader({
     showSuccess("Master branch renamed to main");
   };
 
-  const handleNewChat = async () => {
-    if (appId) {
-      try {
-        const chatId = await IpcClient.getInstance().createChat(appId);
-        setSelectedChatId(chatId);
-        navigate({
-          to: "/chat",
-          search: { id: chatId },
-        });
-        await refreshChats();
-      } catch (error) {
-        showError(`Failed to create new chat: ${(error as any).toString()}`);
-      }
-    } else {
-      navigate({ to: "/" });
-    }
-  };
 
   // REMINDER: KEEP UP TO DATE WITH app_handlers.ts
   const versionPostfix = versions.length === 10_000 ? `+` : "";
@@ -171,14 +155,6 @@ export function ChatHeader({
       <div className="@container flex items-center justify-between pb-1.5 pt-0.5">
         <div className="flex items-center space-x-2">
           <Button
-            onClick={handleNewChat}
-            variant="ghost"
-            className="hidden @2xs:flex items-center justify-start gap-2 mx-2 py-3"
-          >
-            <PlusCircle size={16} />
-            <span>New Chat</span>
-          </Button>
-          <Button
             onClick={onVersionClick}
             variant="ghost"
             className="hidden @6xs:flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md"
@@ -187,6 +163,24 @@ export function ChatHeader({
             {versionsLoading
               ? "..."
               : `Version ${versions.length}${versionPostfix}`}
+          </Button>
+          <Button
+            onClick={async () => {
+              if (appId && branchInfo?.oid) {
+                await IpcClient.getInstance().toggleLikeVersion(
+                  appId,
+                  branchInfo.oid,
+                );
+                await refetchBranchInfo();
+              }
+            }}
+            variant="ghost"
+            className="hidden @6xs:flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md"
+          >
+            <Heart
+              size={16}
+              className={branchInfo?.liked ? "fill-red-500 text-red-500" : ""}
+            />
           </Button>
         </div>
 

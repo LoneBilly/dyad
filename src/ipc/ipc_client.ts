@@ -444,6 +444,10 @@ export class IpcClient {
     });
   }
 
+  public async toggleLikeVersion(appId: number, oid: string): Promise<void> {
+    await this.ipcRenderer.invoke("toggle-like-version", { appId, oid });
+  }
+
   // Get the current branch of an app
   public async getCurrentBranch(appId: number): Promise<BranchResult> {
     return this.ipcRenderer.invoke("get-current-branch", {

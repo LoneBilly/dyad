@@ -111,6 +111,14 @@ export const languageModelProvidersRelations = relations(
   }),
 );
 
+export const liked_versions = sqliteTable("liked_versions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  appId: integer("app_id")
+    .notNull()
+    .references(() => apps.id, { onDelete: "cascade" }),
+  oid: text("oid").notNull(),
+});
+
 export const languageModelsRelations = relations(
   language_models,
   ({ one }) => ({

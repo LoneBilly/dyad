@@ -87,9 +87,10 @@ export interface Version {
   oid: string;
   message: string;
   timestamp: number;
+  liked: boolean;
 }
 
-export type BranchResult = { branch: string };
+export type BranchResult = { branch: string; oid: string; liked: boolean };
 
 export interface SandboxConfig {
   files: Record<string, string>;
